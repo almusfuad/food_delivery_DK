@@ -1,6 +1,7 @@
 from rest_framework import serializers
 from django.contrib.auth.models import User
 from rest_framework.authtoken.models import Token
+from django.contrib.auth import authenticate
 from .models import UserProfiles
 
 
@@ -36,4 +37,39 @@ class UserRegisterSerializer(serializers.ModelSerializer):
             token, created = Token.objects.get_or_create(user = user)
             
             return user, token
+
+
+class UserLoginSerializer(serializers.Serializer):
+      username = serializers.CharField()
+      password = serializers.CharField()
+      
+      def validate(self, data):
+            user = authenticate(
+                  username = data['username'],
+                  password = data['password']
+            )
             
+            if user is None:
+                  raise serializers.ValidationError("Invalid username or password.")
+            return {"user": user}
+      
+      
+      
+class EmployeeRegistrationSerializer(serializers.ModelSerializer):
+      password = serializers.CharField(write_only=True)
+      
+      class Meta:
+            model = User
+            fields = ['username', 'email', 'password', 'first_name', 'last_name']
+            
+      def create(self, validated_data):
+            password = validated_data.pop('password')
+            user = User.objects.create(**validated_data)
+            user.set_password(password)
+            user.save()
+            
+            # Auto assign role
+            UserProfiles.objects.create(user = user, role = "employee")
+            
+            return user
+
