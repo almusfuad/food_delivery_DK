@@ -2,10 +2,12 @@ import secrets
 import string
 from rest_framework.status import *
 from rest_framework.response import Response
-from rest_framework.decorators import api_view
+from rest_framework.decorators import api_view, permission_classes
+from rest_framework.permissions import IsAuthenticated
 from django.contrib.auth import logout as auth_logout, login as auth_login
 from rest_framework.authtoken.models import Token
 from .serializers import UserRegisterSerializer, UserLoginSerializer, EmployeeRegistrationSerializer
+from . permissions import IsOwner
 
 
 # for employee creation a auto generate password will assign
@@ -36,8 +38,6 @@ def registration(request):
             print(f"Error during registration: {e}")
             return Response({'error': "An unexpected error occurred. Please try again later."}, status=HTTP_500_INTERNAL_SERVER_ERROR)
       
-      
-      
 @api_view(['POST'])
 def user_login(request):
       try:
@@ -65,8 +65,11 @@ def user_login(request):
             print(f"Error during login: {e}")
             return Response({"error": "An unexpected error occurred. Please try again latter."}, status=HTTP_502_BAD_GATEWAY)
       
-      
+
+
+# Make token base permissions for add_employee and logout
 @api_view(["POST"])
+@permission_classes([IsAuthenticated, IsOwner])
 def add_employee(request):
       try:
             # check the user
@@ -99,6 +102,7 @@ def add_employee(request):
       
       
 @api_view(["GET"])
+@permission_classes([IsAuthenticated])
 def user_logout(request):
       try:
             user = request.user
