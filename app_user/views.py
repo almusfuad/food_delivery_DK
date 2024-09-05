@@ -6,8 +6,9 @@ from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
 from django.contrib.auth import logout as auth_logout, login as auth_login
 from rest_framework.authtoken.models import Token
-from .serializers import UserRegisterSerializer, UserLoginSerializer, EmployeeRegistrationSerializer
+from .serializers import UserRegisterSerializer, UserLoginSerializer, EmployeeManageSerializer
 from . permissions import IsOwner
+from . models import Employee
 
 
 # for employee creation a auto generate password will assign
@@ -66,41 +67,6 @@ def user_login(request):
             return Response({"error": "An unexpected error occurred. Please try again latter."}, status=HTTP_502_BAD_GATEWAY)
       
 
-
-# Make token base permissions for add_employee and logout
-@api_view(["POST"])
-@permission_classes([IsAuthenticated, IsOwner])
-def add_employee(request):
-      try:
-            # check the user
-            if request.user.profile.role != 'owner':
-                  return Response(
-                        {"error": "Only a restaurant owners can add employees."},
-                        status=HTTP_403_FORBIDDEN
-                  )
-                  
-            # Generate and assign password to the serializer
-            generated_password = generate_password()
-            request.data['password'] = generated_password
-            employee_serializer = EmployeeRegistrationSerializer(data = request.data)
-            
-            if employee_serializer.is_valid():
-                  employee = employee_serializer.save()
-                  return Response(
-                        {
-                              "message":"Employee created successfully.",
-                              "username": employee.username,
-                              "role": employee.profile.role,
-                              "password": generated_password,
-                        },
-                        status=HTTP_201_CREATED
-                  )                  
-            return Response({"error": employee_serializer.errors}, status=HTTP_400_BAD_REQUEST)
-      except Exception as e:
-            print(f"Add employee error: {e}")
-            return Response({"error": "An error occurred. Try again later."}, status=HTTP_502_BAD_GATEWAY)
-      
-      
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
 def user_logout(request):
@@ -115,4 +81,68 @@ def user_logout(request):
       except Exception as e:
             print(f"Logout error: {e}")
             return Response({"During logged out an error has occurred. Try again later."}, status=HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+@api_view(["POST", "GET", "DELETE"])
+@permission_classes([IsAuthenticated, IsOwner])
+def owner_manage_employee(request, pk=None):
+      
+      # Check the owner for permissions
+      owner_profile = request.user.profile
+      if owner_profile.role != 'owner':
+            return Response({"error": "Only owner can create or delete employee."}, status=HTTP_400_BAD_REQUEST)
+      
+      # Create an employee
+      if request.method == "POST":
+            request.data['owner'] = owner_profile.id
+            generated_password = generate_password()
             
+            # create requested data
+            request.data['user'] = {
+                  "username": request.data.get("username"),
+                  "email": request.data.get("email"),
+                  "first_name": request.data.get("first_name"),
+                  "last_name": request.data.get("last_name"),
+                  "password": generated_password
+            }
+            
+            try:
+                  serializer = EmployeeManageSerializer(data = request.data)
+                  if serializer.is_valid():
+                        employee = serializer.save()
+                        return Response({
+                              "message": "Employee created successfully.",
+                              "username": employee.user.username,
+                              "password": generated_password,
+                        }, status=HTTP_201_CREATED)
+                  return Response({"error": serializer.errors}, status=HTTP_406_NOT_ACCEPTABLE)
+            except Exception as e:
+                  print(f"Employee creation error: {e}")
+                  return Response({"error": "Employee creation failed"}, status=HTTP_400_BAD_REQUEST)
+      
+      # Get the employees associated with the owner
+      elif request.method == "GET":
+            if pk is not None:
+            # retrieve single employee
+                  try:
+                        employee = Employee.objects.get(pk = pk, owner = owner_profile)
+                        serializer = EmployeeManageSerializer(employee)
+                        return Response(serializer.data, status=HTTP_200_OK)
+                  except Employee.DoesNotExist:
+                        return Response({"error": "Employee not found."}, status = HTTP_404_NOT_FOUND)
+            else:
+                  employees = Employee.objects.filter(owner = owner_profile)
+                  serializer = EmployeeManageSerializer(employees, many = True)
+                  return Response(serializer.data, status=HTTP_200_OK)
+      
+      # Delete employee
+      elif request.method == "DELETE" and pk is not None:
+            try:
+                  employee = Employee.objects.get(pk = pk, owner = owner_profile)
+                  employee.user.delete()
+                  return Response({"message": "Employee deleted successfully."}, status = HTTP_204_NO_CONTENT)
+            except Employee.DoesNotExist:
+                  return Response({"error": "Employee not found."}, status=HTTP_400_BAD_REQUEST)
+            
+      return Response({"error": "Invalid request"}, status = HTTP_400_BAD_REQUEST)
+

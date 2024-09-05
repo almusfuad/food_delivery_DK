@@ -2,13 +2,13 @@ from rest_framework import serializers
 from django.contrib.auth.models import User
 from rest_framework.authtoken.models import Token
 from django.contrib.auth import authenticate
-from .models import UserProfiles
+from .models import UserProfile, Employee
 
 
 class UserRegisterSerializer(serializers.ModelSerializer):
       password = serializers.CharField(write_only=True)
       password_confirm = serializers.CharField(write_only=True)
-      role = serializers.ChoiceField(choices = UserProfiles.ROLE_CHOICES)
+      role = serializers.ChoiceField(choices = UserProfile.ROLE_CHOICES)
       
       class Meta:
             model = User
@@ -31,7 +31,7 @@ class UserRegisterSerializer(serializers.ModelSerializer):
             user.save()
             
             # Create user role
-            UserProfiles.objects.create(user=user, role=role)
+            UserProfile.objects.create(user=user, role=role)
             
             # generate token while registration
             token, created = Token.objects.get_or_create(user = user)
@@ -55,21 +55,38 @@ class UserLoginSerializer(serializers.Serializer):
       
       
       
-class EmployeeRegistrationSerializer(serializers.ModelSerializer):
-      password = serializers.CharField(write_only=True)
+class EmployeeManageSerializer(serializers.ModelSerializer):
+      username = serializers.CharField(source = "user.username", required = False)
+      email = serializers.CharField(source = "user.email", required = False)
+      first_name = serializers.CharField(source = "user.first_name", required = False)
+      last_name = serializers.CharField(source = "user.last_name", required = False)
+      password = serializers.CharField(write_only = True, required = False)
+      
       
       class Meta:
-            model = User
-            fields = ['username', 'email', 'password', 'first_name', 'last_name']
+            model = Employee
+            fields = ['id', 'username', 'email', 'first_name', 'last_name', 'password', 'owner']
             
       def create(self, validated_data):
-            password = validated_data.pop('password')
-            user = User.objects.create(**validated_data)
-            user.set_password(password)
+            user_data = validated_data.pop('user')
+            password = user_data.pop('password', None)
+            user = User.objects.create(**user_data)
+            
+            if password:
+                  user.set_password(password)
             user.save()
             
-            # Auto assign role
-            UserProfiles.objects.create(user = user, role = "employee")
-            
-            return user
-
+            employee = Employee.objects.create(user = user, **validated_data)
+            return employee
+      
+      def update(self, instance, validated_data):
+            user_data = validated_data.pop('user', None)
+            if user_data:
+                  for attr, value in user_data.items():
+                        setattr(instance.user, attr, value)
+                  instance.user.save()
+            return super().update(instance, validated_data)
+      
+      def to_representation(self, instance):
+            data = super().to_representation(instance)
+            return data
