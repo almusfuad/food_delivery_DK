@@ -2,9 +2,9 @@ from rest_framework import serializers
 from . models import Menu, Category, Item, Modifier
 
 
-class MenuSerializer(serializers.ModelSerializer): 
+class CategorySerializer(serializers.ModelSerializer): 
       class Meta:
-            model = Menu
+            model = Category
             fields = ['id', 'user', 'name', 'description']
             read_only_fields = ['user']
             
