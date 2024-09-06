@@ -33,7 +33,6 @@ class Modifier(models.Model):
       name = models.CharField(max_length=60)
       description = models.TextField(blank=True)
       price = models.DecimalField(max_digits=4, decimal_places=1)
-      update_at = models.DateTimeField(auto_now=True)
       
       
       def __str__(self):
