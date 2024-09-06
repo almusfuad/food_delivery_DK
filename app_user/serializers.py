@@ -2,7 +2,7 @@ from rest_framework import serializers
 from django.contrib.auth.models import User
 from rest_framework.authtoken.models import Token
 from django.contrib.auth import authenticate
-from .models import UserProfile, Employee
+from .models import UserProfile, Employee, Restaurant
 
 
 class UserRegisterSerializer(serializers.ModelSerializer):
@@ -90,3 +90,15 @@ class EmployeeManageSerializer(serializers.ModelSerializer):
       def to_representation(self, instance):
             data = super().to_representation(instance)
             return data
+
+
+class RestaurantSerializer(serializers.ModelSerializer):
+      owner_name = serializers.CharField(source = 'user.username', read_only = True)
+      
+      class Meta:
+            model = Restaurant
+            fields = ['id', 'owner', 'owner_name', 'name', 'location']
+            read_only_fields = ['owner_name']
+            
+      def create(self, validated_data):
+            return super().create(validated_data)

@@ -6,7 +6,7 @@ from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
 from django.contrib.auth import logout as auth_logout, login as auth_login
 from rest_framework.authtoken.models import Token
-from .serializers import UserRegisterSerializer, UserLoginSerializer, EmployeeManageSerializer
+from .serializers import UserRegisterSerializer, UserLoginSerializer, EmployeeManageSerializer, RestaurantSerializer
 from . permissions import IsOwner
 from . models import Employee
 
@@ -146,3 +146,19 @@ def owner_manage_employee(request, pk=None):
             
       return Response({"error": "Invalid request"}, status = HTTP_400_BAD_REQUEST)
 
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated, IsOwner])
+def manage_restaurant(request):
+      if request.method == 'POST':
+            # automatically set the owner as the current logged-in user
+            data = request.data.copy()          # copy of the requested data
+            data['owner'] = request.user.profile.id         # Get the owner id
+            
+            serializer = RestaurantSerializer(data = request.data, context = {'request', request})
+            
+            if serializer.is_valid():
+                  serializer.save()
+                  return Response(serializer.data, status=HTTP_201_CREATED)
+            return Response(serializer.errors, status = HTTP_400_BAD_REQUEST)
+            
