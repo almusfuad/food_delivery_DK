@@ -65,7 +65,7 @@ class EmployeeManageSerializer(serializers.ModelSerializer):
       
       class Meta:
             model = Employee
-            fields = ['id', 'username', 'email', 'first_name', 'last_name', 'password', 'owner']
+            fields = ['id', 'username', 'email', 'first_name', 'last_name', 'password', 'isManager','restaurant']
             
       def create(self, validated_data):
             user_data = validated_data.pop('user')
@@ -93,7 +93,7 @@ class EmployeeManageSerializer(serializers.ModelSerializer):
 
 
 class RestaurantSerializer(serializers.ModelSerializer):
-      owner_name = serializers.CharField(source = 'user.username', read_only = True)
+      owner_name = serializers.CharField(source = 'owner.user.username', read_only = True)
       
       class Meta:
             model = Restaurant

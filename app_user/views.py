@@ -1,4 +1,4 @@
-import secrets
+import random
 import string
 from rest_framework.status import *
 from rest_framework.response import Response
@@ -8,15 +8,12 @@ from django.contrib.auth import logout as auth_logout, login as auth_login
 from rest_framework.authtoken.models import Token
 from .serializers import UserRegisterSerializer, UserLoginSerializer, EmployeeManageSerializer, RestaurantSerializer
 from . permissions import IsOwner
-from . models import Employee
+from . models import Employee, Restaurant
 
 
 # for employee creation a auto generate password will assign
-def generate_password(length = 10):
-      # Generate secure password as Django accepts
-      characters = string.ascii_letters + string.digits + string.punctuation
-      password = ''.join(secrets.choice(characters) for i in range(length))
-      return password
+def generate_password(length = 8):
+      return ''.join(random.choice(string.ascii_letters + string.digits, k=length))
 
 
 @api_view(['POST'])
@@ -83,7 +80,7 @@ def user_logout(request):
             return Response({"During logged out an error has occurred. Try again later."}, status=HTTP_500_INTERNAL_SERVER_ERROR)
 
 
-@api_view(["POST", "GET", "DELETE"])
+@api_view(["POST"])
 @permission_classes([IsAuthenticated, IsOwner])
 def owner_manage_employee(request, pk=None):
       
@@ -92,73 +89,65 @@ def owner_manage_employee(request, pk=None):
       if owner_profile.role != 'owner':
             return Response({"error": "Only owner can create or delete employee."}, status=HTTP_400_BAD_REQUEST)
       
-      # Create an employee
-      if request.method == "POST":
-            request.data['owner'] = owner_profile.id
+      try:
+            restaurant = Restaurant.objects.get(owner = owner_profile)
+      except Exception as e:
+            return Response({'error': 'Owner does not have a restaurant.'}, status=HTTP_404_NOT_FOUND)
+      
+      # create an employee
+      if request.method == 'POST':
             generated_password = generate_password()
             
-            # create requested data
+            is_manager = request.data.get('isManager', False)
+            
+            # create user for employee
             request.data['user'] = {
-                  "username": request.data.get("username"),
-                  "email": request.data.get("email"),
-                  "first_name": request.data.get("first_name"),
-                  "last_name": request.data.get("last_name"),
-                  "password": generated_password
+                  'username': request.data.get('username'),
+                  'email': request.data.get('email'),
+                  'first_name': request.data.get('first_name'),
+                  'last_name': request.data.get('last_name'),
+                  'password': generated_password,
             }
+            request.data['restaurant'] = restaurant.id
+            request.data['isManager'] = is_manager
             
             try:
                   serializer = EmployeeManageSerializer(data = request.data)
                   if serializer.is_valid():
                         employee = serializer.save()
                         return Response({
-                              "message": "Employee created successfully.",
-                              "username": employee.user.username,
-                              "password": generated_password,
+                              'message': 'Employee created successfully.',
+                              'username': employee.user.username,
+                              'password': generated_password,
+                              'isManager': employee.isManager
                         }, status=HTTP_201_CREATED)
-                  return Response({"error": serializer.errors}, status=HTTP_406_NOT_ACCEPTABLE)
+                  return Response({'error': serializer.errors}, status=HTTP_406_NOT_ACCEPTABLE)
             except Exception as e:
                   print(f"Employee creation error: {e}")
-                  return Response({"error": "Employee creation failed"}, status=HTTP_400_BAD_REQUEST)
-      
-      # Get the employees associated with the owner
-      elif request.method == "GET":
-            if pk is not None:
-            # retrieve single employee
-                  try:
-                        employee = Employee.objects.get(pk = pk, owner = owner_profile)
-                        serializer = EmployeeManageSerializer(employee)
-                        return Response(serializer.data, status=HTTP_200_OK)
-                  except Employee.DoesNotExist:
-                        return Response({"error": "Employee not found."}, status = HTTP_404_NOT_FOUND)
-            else:
-                  employees = Employee.objects.filter(owner = owner_profile)
-                  serializer = EmployeeManageSerializer(employees, many = True)
-                  return Response(serializer.data, status=HTTP_200_OK)
-      
-      # Delete employee
-      elif request.method == "DELETE" and pk is not None:
-            try:
-                  employee = Employee.objects.get(pk = pk, owner = owner_profile)
-                  employee.user.delete()
-                  return Response({"message": "Employee deleted successfully."}, status = HTTP_204_NO_CONTENT)
-            except Employee.DoesNotExist:
-                  return Response({"error": "Employee not found."}, status=HTTP_400_BAD_REQUEST)
-            
-      return Response({"error": "Invalid request"}, status = HTTP_400_BAD_REQUEST)
+                  return Response({'error': "Employee creation failed"}, status=HTTP_400_BAD_REQUEST)
 
 
-@api_view(['POST'])
+@api_view(['POST', 'GET'])
 @permission_classes([IsAuthenticated, IsOwner])
 def manage_restaurant(request):
+      owner_profile = request.user.profile
+      
+      # create new restaurant
       if request.method == 'POST':
-            # automatically set the owner as the current logged-in user
-            data = request.data.copy()          # copy of the requested data
-            data['owner'] = request.user.profile.id         # Get the owner id
+            request.data['owner'] = owner_profile.id
             
-            serializer = RestaurantSerializer(data = request.data, context = {'request', request})
-            
+            serializer = RestaurantSerializer(data = request.data)
             if serializer.is_valid():
                   serializer.save()
                   return Response(serializer.data, status=HTTP_201_CREATED)
-            return Response(serializer.errors, status = HTTP_400_BAD_REQUEST)
+            return Response({'error': serializer.errors}, status=HTTP_400_BAD_REQUEST)
+      
+      # Handle get request
+      elif request.method == "GET":
+            if owner_profile.role != 'owner':
+                  return Response({'error': "Only owners can view their restaurant"}, status=HTTP_403_FORBIDDEN)
+            
+            restaurants = Restaurant.objects.filter(owner = owner_profile)
+            serializer = RestaurantSerializer(restaurants, many = True)
+            return Response(serializer.data, status=HTTP_200_OK)
             

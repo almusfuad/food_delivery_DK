@@ -26,8 +26,9 @@ class Restaurant(models.Model):
       
 class Employee(models.Model):
       user = models.OneToOneField(User, on_delete=models.CASCADE, related_name="employee")
-      owner = models.ForeignKey(UserProfile, on_delete=models.CASCADE, related_name="employees")
+      restaurant = models.ForeignKey(Restaurant, on_delete=models.CASCADE, related_name="employees")
+      isManager = models.BooleanField(default=False, blank=True)
       
       def __str__(self):
-            return f"{self.user.username} - {self.owner.user.username}"
+            return f"{self.user.username} - {self.restaurant.name}"
       
