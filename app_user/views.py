@@ -13,7 +13,7 @@ from . models import Employee, Restaurant
 
 # for employee creation a auto generate password will assign
 def generate_password(length = 8):
-      return ''.join(random.choice(string.ascii_letters + string.digits, k=length))
+      return ''.join(random.choices(string.ascii_letters + string.digits, k=length))
 
 
 @api_view(['POST'])
