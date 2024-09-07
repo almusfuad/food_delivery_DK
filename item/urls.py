@@ -7,5 +7,4 @@ urlpatterns = [
       path("add_menu/", view=views.add_menu, name='add_menu'),
       path("add_item/", view=views.add_item, name='add_item'),
       path("add_modifier/", view=views.add_modifier, name='add_modifier'),
-      path("manage_category/", view=views.manage_category, name='manage_category'),
 ]

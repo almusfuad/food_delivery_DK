@@ -1,68 +1,62 @@
 from functools import wraps
+from django.db.models import Q
 from rest_framework.status import *
 from rest_framework.response import Response
 from . permissions import CanAdd, CanManage
 from rest_framework.decorators import api_view, permission_classes
 from . models import Category
 from . serializers import CategorySerializer, MenuSerializer, ItemSerializer, ModifierSerializer
-from app_user.models import Restaurant
+from app_user.models import Restaurant, Employee
 
 
 
 
 
-@api_view(['POST'])
+@api_view(['POST', 'GET'])
 @permission_classes([CanAdd])
 def add_category(request):
       user = request.user
-      
-      # handle get_request
-      if request.method == 'GET':
-            restaurants = Restaurant.objects.filter(owner__user = user)
-            
-            if not Restaurant.exists():
-                  return Response({'error': "You don't own a restaurant."}, status=HTTP_404_NOT_FOUND)
-            
-            categories = Category.objects.filter(restaurant__in = restaurants)
-            serializer = CategorySerializer(categories, many=True)
-            return Response(serializer.data, status=HTTP_200_OK)
-      
       if request.method == "POST":
+            # Extract data from the request
+            category_name = request.data.get('name')
+            description = request.data.get('description')
             restaurant_id = request.data.get('restaurant')
             
-            try:
-                  restaurant = Restaurant.objects.get(id = restaurant_id, owner__user = user)
-            except Restaurant.DoesNotExist:
-                  return Response({'error': 'Create categories for your own restaurant.'}, status = HTTP_400_BAD_REQUEST)
-            
-            data = request.data.copy()
-            data['restaurant'] = restaurant.id
-            serializer = CategorySerializer(data = request.data, context = {'request': request})
-            
-            if serializer.is_valid():
-                  serializer.save()
-                  return Response(serializer.data, status=HTTP_201_CREATED)
-            return Response(serializer.errors, status=HTTP_400_BAD_REQUEST)
-      
+            # Check if required fields are present
+            if not category_name or not restaurant_id:
+                  return Response({'error': 'Name and restaurant are required.'}, status=HTTP_400_BAD_REQUEST)
 
-@api_view(['PUT', 'DELETE'])
-@permission_classes([CanManage])
-def manage_category(request, pk=None):
-      if pk is not None:
+            # Try to retrieve the Restaurant instance
             try:
-                  category = Category.objects.get(pk=pk)
-            except Category.DoesNotExist:
-                  return Response({"error": "Category not found."}, status=HTTP_404_NOT_FOUND)
+                  restaurant = Restaurant.objects.get(id=restaurant_id)
+            except Restaurant.DoesNotExist:
+                  return Response({'error': 'Restaurant does not exist.'}, status=HTTP_404_NOT_FOUND)
+
+            # Check if the user has the right permissions
+            if user.profile.role == 'owner' or Employee(user = user, restaurant=restaurant, isManager=True).exists():
+                  # Create the Category
+                  category = Category.objects.create(
+                        restaurant=restaurant,
+                        name=category_name,
+                        description=description,
+                  )
+                  
+                  # Serialize the created Category
+                  category_serializer = CategorySerializer(category)
+                  return Response({'message': 'Category created successfully.', 'data': category_serializer.data}, status=HTTP_201_CREATED)
+            else:
+                  return Response({'error': 'You are not the owner or manager of this restaurant.'}, status=HTTP_403_FORBIDDEN)
             
-            if request.method == "PUT":
-                  serializer = CategorySerializer(category, data=request.data, context = {'request': request})
-                  if serializer.is_valid():
-                        serializer.save()
-                        return Response(serializer.data)
-                  return Response(serializer.errors, status=HTTP_400_BAD_REQUEST)
+      elif request.method == 'GET':
+            categories = Category.objects.filter(
+                  Q(restaurant__owner = user.profile) |
+                  Q(restaurant__employees__user = user)
+            ).distinct()
             
-            elif request.method == "DELETE":
-                  category.delete()
+            category_serializer = CategorySerializer(categories, many=True)
+            return Response({'categories': category_serializer.data}, status=HTTP_200_OK)
+            
+
 
 
 

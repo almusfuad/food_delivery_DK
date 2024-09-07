@@ -11,14 +11,15 @@ class CanAdd(BasePermission):
                   return False
       
             # checking owner
-            user_profile = request.user.profile
-            if user_profile.role == 'owner':
+            if getattr(request.user, 'profile', None) and request.user.profile.role == 'owner':
                   return True
             
             # check for manager
             try:
                   employee = Employee.objects.get(user = request.user)
-                  return employee.isManager
+                  if employee.restaurant:
+                        return True
+                  return False
             except Employee.DoesNotExist:
                   return False
       

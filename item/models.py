@@ -8,7 +8,7 @@ class Category(models.Model):
       description = models.TextField(blank=True)
       
       def __str__(self):
-            return f"{self.user.username}-{self.name}"
+            return f"{self.restaurant.name}-{self.name}"
       
 class Menu(models.Model):
       category = models.ForeignKey(Category, on_delete=models.CASCADE, related_name="menus")
