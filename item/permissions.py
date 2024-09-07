@@ -15,8 +15,12 @@ class CanAdd(BasePermission):
             if user_profile.role == 'owner':
                   return True
             
-            # check for the owner employee
-            return Employee.objects.filter(user = request.user, owner=user_profile).exists()
+            # check for manager
+            try:
+                  employee = Employee.objects.get(user = request.user)
+                  return employee.isManager
+            except Employee.DoesNotExist:
+                  return False
       
 class CanManage(BasePermission):
       def has_object_permission(self, request, view, obj):
