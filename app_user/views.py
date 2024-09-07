@@ -46,13 +46,27 @@ def user_login(request):
                   
                   token, created = Token.objects.get_or_create(user = user)
                   
+                  try:
+                        profile_role = user.profile.role
+                  except AttributeError:
+                        profile_role = None
+                        
+                  if profile_role in ['customer', 'owner']:
+                        role = profile_role
+                  else:
+                        try:
+                              employee = Employee.objects.get(user=user)
+                              role = 'manager' if employee.isManager else 'employee'
+                        except Employee.DoesNotExist:
+                              role = 'unknown'
+                  
                   # Response data
                   user_data = {
                         "username": user.username,
                         "email": user.email,
                         "first_name": user.first_name,
                         "last_name": user.last_name,
-                        "role": user.profile.role,
+                        "role": role,
                         "token": token.key,
                   }
                   
@@ -82,39 +96,39 @@ def user_logout(request):
 
 @api_view(["POST"])
 @permission_classes([IsAuthenticated, IsOwner])
-def owner_manage_employee(request, pk=None):
-      
+def add_employee(request):
       # Check the owner for permissions
       owner_profile = request.user.profile
       if owner_profile.role != 'owner':
             return Response({"error": "Only owner can create or delete employee."}, status=HTTP_400_BAD_REQUEST)
       
       try:
-            restaurant = Restaurant.objects.get(owner = owner_profile)
-      except Exception as e:
+            restaurant = Restaurant.objects.get(owner=owner_profile)
+      except Restaurant.DoesNotExist:
             return Response({'error': 'Owner does not have a restaurant.'}, status=HTTP_404_NOT_FOUND)
       
-      # create an employee
       if request.method == 'POST':
             generated_password = generate_password()
             
-            is_manager = request.data.get('isManager', False)
-            
-            # create user for employee
-            request.data['user'] = {
+            # Prepare data for the serializer
+            data = {
                   'username': request.data.get('username'),
                   'email': request.data.get('email'),
                   'first_name': request.data.get('first_name'),
                   'last_name': request.data.get('last_name'),
-                  'password': generated_password,
+                  'isManager': request.data.get('isManager', False),
+                  'restaurant': restaurant.id
             }
-            request.data['restaurant'] = restaurant.id
-            request.data['isManager'] = is_manager
+            
+            print(f"data passed to serializer: {data}")
             
             try:
-                  serializer = EmployeeManageSerializer(data = request.data)
+                  serializer = EmployeeManageSerializer(data=data)
                   if serializer.is_valid():
                         employee = serializer.save()
+                        user = employee.user
+                        user.set_password(generated_password)
+                        user.save()
                         return Response({
                               'message': 'Employee created successfully.',
                               'username': employee.user.username,

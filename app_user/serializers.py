@@ -56,36 +56,30 @@ class UserLoginSerializer(serializers.Serializer):
       
       
 class EmployeeManageSerializer(serializers.ModelSerializer):
-      username = serializers.CharField(source = "user.username", required = False)
-      email = serializers.CharField(source = "user.email", required = False)
-      first_name = serializers.CharField(source = "user.first_name", required = False)
-      last_name = serializers.CharField(source = "user.last_name", required = False)
-      password = serializers.CharField(write_only = True, required = False)
-      
-      
+      username = serializers.CharField(source="user.username", required=False)
+      email = serializers.CharField(source="user.email", required=False)
+      first_name = serializers.CharField(source="user.first_name", required=False)
+      last_name = serializers.CharField(source="user.last_name", required=False)
+
       class Meta:
             model = Employee
-            fields = ['id', 'username', 'email', 'first_name', 'last_name', 'password', 'isManager','restaurant']
-            
+            fields = ['id', 'username', 'email', 'first_name', 'last_name', 'isManager', 'restaurant']
+      
       def create(self, validated_data):
-            user_data = validated_data.pop('user')
-            password = user_data.pop('password', None)
+            print(f"Validated data in serializer: {validated_data}")
+            user_data = validated_data.pop('user', {})
+            
+            print(f"user data for creation: {user_data}")
+
             user = User.objects.create(**user_data)
             
-            if password:
-                  user.set_password(password)
             user.save()
             
-            employee = Employee.objects.create(user = user, **validated_data)
+            restaurant = validated_data.pop('restaurant', None)
+            employee = Employee.objects.create(user=user, restaurant=restaurant, **validated_data)
             return employee
       
-      def update(self, instance, validated_data):
-            user_data = validated_data.pop('user', None)
-            if user_data:
-                  for attr, value in user_data.items():
-                        setattr(instance.user, attr, value)
-                  instance.user.save()
-            return super().update(instance, validated_data)
+
       
       def to_representation(self, instance):
             data = super().to_representation(instance)
