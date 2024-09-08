@@ -54,7 +54,7 @@ def owner_restaurants(request):
 
 
 @api_view(['GET'])
-@api_view([IsAuthenticated])
+@permission_classes([IsAuthenticated])
 def manager_employees(request):
       user = request.user
       
