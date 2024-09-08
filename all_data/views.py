@@ -1,5 +1,6 @@
 from rest_framework.status import *
 from rest_framework.response import Response
+from rest_framework.permissions import IsAuthenticated
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.pagination import PageNumberPagination
 from django.db.models import Q
@@ -53,6 +54,7 @@ def owner_restaurants(request):
 
 
 @api_view(['GET'])
+@api_view([IsAuthenticated])
 def manager_employees(request):
       user = request.user
       
