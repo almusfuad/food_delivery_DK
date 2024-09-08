@@ -26,14 +26,10 @@ class MenuSerializer(serializers.ModelSerializer):
       class Meta:
             model = Menu
             fields = ['id', 'category', 'category_name', 'name', 'description']
-            read_only_fields = ['category_name']
-            
+            read_only_fields = ['category_name']            
             
       def create(self, validated_data):
             return super().create(validated_data)
-      
-      def update(self, instance, validated_data):
-            return super().update(instance, validated_data)
       
       
 class ItemSerializer(serializers.ModelSerializer):
@@ -47,22 +43,18 @@ class ItemSerializer(serializers.ModelSerializer):
       def create(self, validated_data):
             return super().create(validated_data)
       
-      
-      def update(self, instance, validated_data):
-            return super().update(instance, validated_data)
-      
 
 class ModifierSerializer(serializers.ModelSerializer):
+      restaurant_name = serializers.CharField(read_only = True, source = 'restaurant.name')
       
       class Meta:
             model = Modifier
-            fields = ['id', 'name', 'description', 'price']
+            fields = ['id', 'restaurant', 'restaurant_name', 'name', 'description', 'price']
+            read_only_fields = ['restaurant_name']
             
       def create(self, validated_data):
             return super().create(validated_data)
-      
-      def update(self, instance, validated_data):
-            return super().update(instance, validated_data)
+
       
       
 class ItemModifierSerializer(serializers.ModelSerializer):

@@ -1,10 +1,10 @@
 from rest_framework.permissions import BasePermission
 from . models import Menu
-from app_user.models import Employee
+from app_user.models import Employee, Restaurant
 
 
 # custom permissions to allow restaurant owner or employees to manage the menu
-class CanAdd(BasePermission): 
+class CanAccess(BasePermission): 
       def has_permission(self, request, view):
             # authenticated check
             if not request.user.is_authenticated:
@@ -22,19 +22,17 @@ class CanAdd(BasePermission):
                   return False
             except Employee.DoesNotExist:
                   return False
-      
+            
 class CanManage(BasePermission):
-      def has_object_permission(self, request, view, obj):
-            if not request.user.is_authenticated:
+      def has_permission(self, request, view):
+            user = request.user
+            
+            if request.method in ['POST', 'PUT', 'PATCH']:
+                  if user.profile.role =='owner':
+                        return True
+                  elif hasattr(user, 'employee') and user.employee.isManager:
+                        return True
                   return False
             
-            # check the creator of the menu
-            if obj.user == request.user:
-                  return True
-            
-            # if the user is an employee under the owner
-            try:
-                  employee = Employee.objects.get(user=request.user, owner__user = obj.user)
-                  return True
-            except Employee.DoesNotExist:
-                  return False
+            # Allow get permissions
+            return True

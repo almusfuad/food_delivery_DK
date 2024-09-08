@@ -30,6 +30,7 @@ class Item(models.Model):
 
 
 class Modifier(models.Model):
+      restaurant = models.ForeignKey(Restaurant, on_delete=models.CASCADE, related_name='modifiers', null=True, blank=True)
       name = models.CharField(max_length=60)
       description = models.TextField(blank=True)
       price = models.DecimalField(max_digits=4, decimal_places=1)
