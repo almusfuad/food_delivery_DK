@@ -1,6 +1,7 @@
 from django.db import models
 from django.contrib.auth.models import User
 from item.models import Item, Modifier
+from app_user.models import Restaurant
 
 # Create your models here.
 class Order(models.Model):
@@ -11,6 +12,7 @@ class Order(models.Model):
       ]
       
       customer = models.ForeignKey(User, on_delete=models.CASCADE, related_name='orders')
+      restaurant = models.ForeignKey(Restaurant, on_delete=models.CASCADE, related_name='orders')
       status = models.CharField(max_length=10, choices=STATUS_CHOICES)
       total_amount = models.DecimalField(max_digits=6, decimal_places=2, blank=False, default=0.00)
       order_at = models.DateTimeField(auto_now_add=True)
