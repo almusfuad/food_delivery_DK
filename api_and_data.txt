@@ -1,0 +1,50 @@
+###AUTH:
+1. Register: /user/register/
+	owner: 
+		{ "username": "owner_1", "email": "owner1@DK.com", "password": "1234abcd%", "password_confirm": "1234abcd%", "first_name": "Jane", "last_name": "Doe", "role": "owner" }
+	
+	customer:
+
+
+2. Login: /user/login/
+	{ "username": "owner_1", "password": "1234abcd%" }
+	{ "username": "customer_1", "password": "1234abcd%" }
+
+3. Logout: /user/logout/
+
+
+###Owner interaction:
+1. Create restaurant: /user/add_restaurant/
+	{ "name": "Bistro-C", "location": "Khulna" }
+
+2. Create Employee: /user/add_employee/
+	Manager: { "username": "manager_gourmet", "email": "manager@gourmet.com", "first_name": "Emily", "last_name": "Johnson", "isManager": true } 
+E1D14BBI (yummy_manager), Df9sPZIy (bistro-c Manager)
+
+	Employee: { "username": "employee1_gourmet", "email": "employee1@gourmet.com", "first_name": "Eva", "last_name": "Wattson", "restaurant": 1  }
+ORF8yMzi (bistro-1), krQdZgOd (bistro-2), 3czhtzIW (yummy - 1), gROojDPx (yummy - 2)
+
+###Category>menu>item>modifier:
+1. Category:
+	create: /item/add_category/
+	{ "name":"Apetizers", "description":"A selection of starters designed to whet your appetite and prepare you for the main course.", "restaurant": 1 }
+
+2. Menu:
+	create: /item/add_menu/
+	{ "category": 1, "name": "Classic Starters", "description": "Enjoy a selection of timeless appetizers that kick off your meal with flavor. From warm Garlic Bread to savory Stuffed Mushrooms and fresh Bruschetta, each dish offers a perfect start to your dining experience." }
+
+3. Item:
+	create: /item/add_item/
+	{ "menu": 1, "name": "Cheeseburger", "description": "A juicy burger with cheese, lettuce, and tomato.", "price": 9.99 }
+
+4. Modifier:
+	create /item/add_modifier/
+	{ "name": "Extra Cheese", "restaurant": 1, "description": "Add 50gm extra cheese", "price": 2.50 }
+	{ "name": "Extra Menonis", "restaurant": 1, "description": "Extra 100ml Menonis", "price": 1.50 }
+
+
+
+###Find all restaurants
+1. Searching: /all/restaurants/?query=starter
+2. all: /all/restaurants/
+3. manager: /all/manager_employees/
